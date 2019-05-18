@@ -1,7 +1,11 @@
-#!/usr/bin/env python
-# coding: utf-8
+# @Author: Bhanu Prakash Reddy
+# @Date:   2019-05-18T11:02:46+05:30
+# @Last modified by:   Bhanu Prakash Reddy
+# @Last modified time: 2019-05-18T12:06:41+05:30
 
-# In[1]:
+# /*=============================================>>>>>
+# = Code to generated features and labels for the dataset =
+# ===============================================>>>>>*/
 
 
 from nltk.corpus import words
@@ -26,19 +30,21 @@ from sklearn.linear_model import LogisticRegression
 import sys
 from nltk.tag.stanford import StanfordNERTagger
 from nltk.corpus import stopwords
-import aspell
-
 import random
+
+# Libraries needed for spell check and LIWC features
+import aspell
 from empath import Empath
 
 lexicon = Empath()
 #spell = SpellChecker()
 spill = aspell.Speller()
-
-# In[2]:
-
 stop_words = set(stopwords.words('english'))
 st = StanfordNERTagger('stanford-ner/all.3class.distsim.crf.ser.gz', 'stanford-ner/stanford-ner.jar')
+
+# =====================================
+# =           Read the data           =
+# =====================================
 
 file = open(sys.argv[1], "r")
 lines = file.read()
@@ -47,11 +53,17 @@ train_data = [lines[x] for x in range(len(lines)) if x%2 == 0]
 y_labels = [lines[x] for x in range(len(lines)) if x%2 != 0]
 y_labels = [float(x.strip()) for x in y_labels]
 train_data = train_data[:-1]
-
 final = []
 for i in range(len(y_labels)):
     final.append((train_data[i], y_labels[i]))
 random.shuffle(final)
+
+# ======  End of Read the data  =======
+
+# =================================================
+# =           Split train and test data           =
+# =================================================
+
 train_data = []
 y_labels = []
 test_data = []
@@ -75,30 +87,27 @@ for i in range(len(y_test)):
     else:
         y_test[i] = 1
 
-
-# In[6]:
+# ======  End of Split train and test data  =======
 
 
 check = [i.split("#$#$#")[0].strip() for i in train_data]
 
-
-# In[8]:
-
+# ===========================================
+# =           Generating features           =
+# ===========================================
 
 tag_set = ['NOUN', '.', 'ADP', 'VERB', 'ADJ', 'NUM', 'CONJ', 'DET', 'PRON', 'ADV', 'PRT', 'X']
 final_train_data = [] # Contains the feature vector no_oov words, POS tag counts i.e total 15 features.
 for i in tqdm(range(len(check))):
     if(check[i]!=''):
         text = nltk.word_tokenize(check[i])
-        senti_feat = lexicon.analyze(text, categories=['violence','swearing_terms', 'sexual', 'irritability', 'confusion', 'anonymity','emotional','lust', 'anger','ugliness','terrorism','pain', 'negative_emotion','messaging','disappointment','positive_emotion'])
+        senti_feat = lexicon.analyze(text, categories=['violence','swearing_terms', 'sexual', 'irritability', 'confusion', 'anonymity','emotional','lust', 'anger','ugliness','terrorism','pain', 'negative_emotion','messaging','disappointment','positive_emotion']) # LIWC features
         posTagged = pos_tag(text)
         simplifiedTags = [(word, map_tag('en-ptb', 'universal', tag)) for word, tag in posTagged]
-        counts = Counter([i[1] for i in simplifiedTags])
-        words_check = [j.lower() for j in re.split('[^A-Za-z0-9]',check[i])]
+        counts = Counter([i[1] for i in simplifiedTags]) # Counts of POS Tags
+        words_check = [j.lower() for j in re.split('[^A-Za-z0-9]',check[i])] # OOV check
         words_check = [re.sub('[^A-Za-z0-9]+', '', j) for j in words_check]
-#         misspelled = set(words_check)&set(miss_1)
-#         misspelled = spell.unknown(words_check)
-        misspelled = [w for w in words_check if spill.check(w) == False]
+        misspelled = [w for w in words_check if spill.check(w) == False] # Spelling mistakes
         lis = [len(misspelled)]
         for j in tag_set:
             lis+=[counts[j]]
@@ -107,8 +116,12 @@ for i in tqdm(range(len(check))):
         lis+=[y_labels[i]]
         final_train_data.append(lis)
 
-# In[ ]:
+# ======  End of Generating features  =======
 
+
+# ================================================
+# =           Normalizing the features           =
+# ================================================
 
 train = []
 for i in final_train_data:
@@ -125,12 +138,13 @@ scaler = StandardScaler()
 scaler.fit(train)
 new_train = scaler.transform(train)
 
+# ======  End of Normalizing the features  =======
 
-# In[ ]:
 
 
 check = [i.split("#$#$#")[0].strip() for i in test_data]
 
+# Same process for test dataset
 
 tag_set = ['NOUN', '.', 'ADP', 'VERB', 'ADJ', 'NUM', 'CONJ', 'DET', 'PRON', 'ADV', 'PRT', 'X']
 final_test_data = [] # Contains the feature vector no_oov words, POS tag counts i.e total 15 features.
@@ -143,8 +157,6 @@ for i in tqdm(range(len(check))):
         counts = Counter([i[1] for i in simplifiedTags])
         words_check = [j.lower() for j in re.split('[^A-Za-z0-9]',check[i])]
         words_check = [re.sub('[^A-Za-z0-9]+', '', j) for j in words_check]
-#         misspelled = set(words_check)&set(miss_1)
-#         misspelled = spell.unknown(words_check)
         misspelled = [w for w in words_check if spill.check(w) == False]
         lis = [len(misspelled)]
         for j in tag_set:
@@ -153,9 +165,6 @@ for i in tqdm(range(len(check))):
             lis+=[senti_feat[j]]
         lis+=[y_test[i]]
         final_test_data.append(lis)
-
-
-# In[ ]:
 
 
 test = []
@@ -173,8 +182,9 @@ scaler = StandardScaler()
 scaler.fit(test)
 new_test = scaler.transform(test)
 
-
-# In[ ]:
+# ====================================================================================
+# =           Saving the features and the correspoding ground truth labels           =
+# ====================================================================================
 
 new_data = np.zeros((len(new_train)+len(new_test), len(new_train[0])), dtype=float)
 new_labels = np.zeros((len(labels)+len(truth)), dtype=float)
@@ -192,3 +202,6 @@ for i in range(len(new_test)):
 print(sys.argv[1].split("/")[-1], len(final))
 np.save("features.npy", new_data)
 np.save("labels.npy", new_labels)
+
+# ======  End of Saving the features and the correspoding ground truth labels  =======
+

@@ -1,3 +1,10 @@
+# ===============================================================================================================================================
+# =           Code to extract the content of text tags of the xml file. Further processed by java_code_cleaner.py to get cleaned text           =
+# ===============================================================================================================================================
+
+
+
+
 import sys
 import numpy as np
 from datetime import datetime, timedelta
@@ -14,12 +21,19 @@ if(len(sys.argv) != 3):
 file_id = sys.argv[1]
 
 # Start parsing the xml file.
+
 tree = ET.parse(file_id)
 root = tree.getroot()
 NAMESPACE = "{http://www.mediawiki.org/xml/export-0.10/}"
+
 # The edits is a list of tuples. First element in the tuple is the username and the second element is the dictionary that contains the user edit details i.e sha1, text, revision id, ...
 edits = []
 count_text = 0
+
+# ====================================================================
+# =           Parsing for various elements in the xml file           =
+# ====================================================================
+
 for item in root.findall(".//"+NAMESPACE+"revision"):
 	edit = {}
 	for child in item:
@@ -49,13 +63,14 @@ for item in root.findall(".//"+NAMESPACE+"revision"):
 		try:
 			edits.append((edit['<c>'+NAMESPACE+'ip'], edit))
 		except:
-			edits.append(("RANDOM_USER_TAG", edit))
+			edits.append(("RANDOM_USER_TAG", edit)) # If user_name is not present
+
+# ======  End of Parsing for various elements in the xml file  =======
+
 
 file = open(sys.argv[2], "w", encoding="utf-8")
-# for i in edits: # Uncomment this to get output for all edits in the file.
 
-# i = edits[-1]
+
+# save the edits between two delimiter tags 
 for i in range(len(edits)):
-	# print(edits[i][1][NAMESPACE+'text'])
 	file.write(edits[i][1][NAMESPACE+'text'].decode("utf-8")+"\n*$*$*$delimiter$*$*$*\n")
-# file.write(edits[-1][1][NAMESPACE+'text'].decode("utf-8"))

@@ -1,3 +1,10 @@
+# ===============================================================================================================
+# =           Code to count the number of datapoints in a processed file or folder of processed files           =
+# ===============================================================================================================
+
+
+
+
 import numpy as np
 import os, sys
 import random
@@ -16,6 +23,7 @@ parser.add_argument('--csv', type=str, default='',
 args = parser.parse_args()
 
 
+# Function to count the number of datapoints in a file
 
 def datapts_counter(filename):
 	file = open(filename, "r")
@@ -26,6 +34,9 @@ def datapts_counter(filename):
 	y_labels = [float(x.strip()) for x in y_labels]
 	train_data = train_data[:-1]
 	return len(train_data)
+
+# Given a folder, counts the number of datapoints in each file
+# Given a file, counts the number of datapoints in the file
 
 if __name__ == '__main__':
 	savedir = ''

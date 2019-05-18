@@ -4,7 +4,7 @@ set -e
 folder="$1" 
 for filename in "$1/"*; do
 	echo "Executing compute_quality for $filename"
-	python3 ../scripts/compute_quality.py --processes=48 "$filename" > "$filename.qualities.txt"
+	python3 ./scripts/compute_quality.py --processes=48 "$filename" > "$filename.qualities.txt"
 	echo "Executing extractor for $filename"
 	python3 ./extractor.py "$filename" "$filename.extracted.txt"
 	echo "Executing cleaner for $filename"

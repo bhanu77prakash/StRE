@@ -1,3 +1,10 @@
+# ==================================================================================
+# =           Code to convert the raw data form to the required format.            =
+# ==================================================================================
+
+
+# Parses two files in parallel the extracted text file and the original text file
+
 import sys
 import numpy as np
 from datetime import datetime, timedelta
@@ -37,6 +44,10 @@ file = open(sys.argv[2], 'w')
 if(len(lines)<5):
     exit()
 
+# ===========================================================================================
+# =           Removes the parenthesis part and keeps plain text in markup format           =
+# ===========================================================================================
+
 def parenthesis(text):
     flag = 0
     flag1 = 0
@@ -63,6 +74,12 @@ def parenthesis(text):
             final_text+=i
     return final_text
 
+# ======  End of Removes the parenthesis part and keeps plain text in markup format  =======
+
+# ===============================================================
+# =           Removes the ending sections in the page           =
+# ===============================================================
+
 def parse_wiki(text):
     text = parenthesis(text)
     text = re.sub("==References==(.|\n)*", "", text)
@@ -71,9 +88,12 @@ def parse_wiki(text):
     text = re.sub("\[http://.*?\]", "", text)
     return text.strip()
 
+# ======  End of Removes the ending sections in the page  =======
+
+
 # This part of the code takes input file name
 
-# Start parsing the xml file.
+# Start parsing the original xml file.
 tree = ET.parse(file_id)
 root = tree.getroot()
 NAMESPACE = "{http://www.mediawiki.org/xml/export-0.10/}"
@@ -91,7 +111,6 @@ for item in root.findall(".//"+NAMESPACE+"revision"):
                     # print grand.tag
                 except:
                     edit["<c>"+grand.tag] = ''
-        # For the text tag, I am unable to parse the wiki text and convert to plain text.
         elif child.tag == NAMESPACE+'text':
             count_text+=1
             try:
@@ -111,35 +130,22 @@ for item in root.findall(".//"+NAMESPACE+"revision"):
             edits.append((edit['<c>'+NAMESPACE+'ip'], edit))
         except:
             edits.append(("RANDOM_USER_TAG", edit))
-    # exit()
 
-
-def cleanup():
-    timeout_sec = 0
-    for p in all_processes: # list of your processes
-        p_sec = 0
-        for second in range(timeout_sec):
-            if p.poll() == None:
-                time.sleep(0)
-                p_sec += 1
-        if p_sec >= timeout_sec:
-            p.kill() # supported from python 2.6
-    print ('cleaned up!')
 
 count = 0
 final_edits = []
+
+# =============================================================
+# =           Handling the cleaned text in parallel           =
+# =============================================================
 
 redirect_file = open(sys.argv[4], "r")
 line = redirect_file.read()
 line = line.strip().split("*$*$*$delimiter$*$*$*")
 line = line[:-2]
-# exit()
 for i in range(len(edits)):
-    # print(i)
     edits[i][1][NAMESPACE+'text'] = line[i]
-# exit()
-# print(len(edits))
-# exit()
+
 # Removing continuous edits by same user as explained in the paper.
 for i in range(0,len(edits)):
     try: 
@@ -152,7 +158,7 @@ for i in range(0,len(edits)):
         final_edits.append(edits[i])
         count = 0    
 
-
+# Storing the content in a temporary file where edits are stored along with the revision id's
 count = 0
 for i in final_edits:
     if(i[1][NAMESPACE+'id'] in lines[:, 0]):
@@ -163,15 +169,17 @@ file.close()
 
 temp = []
 for i in final_edits:
+    # If we have a valid score for this revision ID then process the edit (edits are stored in form of sentence level tokens)
+    # If needed other tags, please append to this tuple at the end and accordingly update the sentence format to be stored in the final file
     if(i[1][NAMESPACE+'id'] in lines[:, 0]):
         temp.append((tokenize.sent_tokenize(i[1][NAMESPACE+'text']), lines[list(lines[:, 0]).index(i[1][NAMESPACE+'id'])][4]))
 
-# for i in final_edits:
-
+# Removing the extra spaces and new line characters from the sentences
 for i in range(len(temp)):
     for j in range(len(temp[i][0])):
         temp[i][0][j] = temp[i][0][j].strip()
 
+# Removing the null tokens from the list of tokens in the edit
 lines = []
 for i in temp:
     line = []
@@ -181,12 +189,12 @@ for i in temp:
     if(len(line)!=0):
         lines.append((line, i[1]))
 
+# Identifying which sentences are the changes in the edit and the previous version of it.
 indices = []
 for i in range(1, len(lines)):
     indices.append([x for x in range(len(lines[i][0])) if lines[i][0][x] not in lines[i-1][0]])
     indices[-1] += [x for x in range(len(lines[i-1][0])) if (lines[i-1][0][x] not in lines[i][0])]
 
-# exit()
 
 changes = []
 
@@ -211,15 +219,15 @@ changes = []
 #         print("Finised Iter")
 
 
-def processor(index, return_dict):
-    # print(index)
-    temp_list = []
-    # os.system("touch "+str(index)+".txt")
+# =========================================================================================================
+# =           function that matches the sentence that is previous vesion of a modified sentence           =
+# =========================================================================================================
+# This function uses fuzzyset function to identify the nearest sentence that this sentence is modified from
 
+def processor(index, return_dict):
+    temp_list = []
     for ja in range(len(indices[index])):
-        # print(return_dict[i].keys())
         if(indices[index][ja] in range(len(lines[index+1][0]))):
-            # print("someting")
             a = fuzzyset.FuzzySet()
             for stri in lines[index][0]:
                 a.add(stri)
@@ -238,7 +246,10 @@ def processor(index, return_dict):
             temp_list.append(((''+" #$#$# "+lines[index][0][indices[index][ja]], lines[index+1][1])))
 
     return_dict[index] = temp_list
-    # os.system("rm "+str(index)+".txt")
+
+# ======  End of function that matches the sentence that is previous vesion of a modified sentence  =======
+
+    
 
 # def processor1(index, ja, return_dict1):
 #     if(indices[index][ja] in range(len(lines[index+1][0]))):
@@ -297,6 +308,9 @@ def processor(index, return_dict):
 
     
 
+# ========================================================================
+# =           Multi Process handling of the edits in parallel.           =
+# ========================================================================
 
 manager = multiprocessing.Manager()
 return_dict = manager.dict()
@@ -308,19 +322,7 @@ for i in range(len(indices)):
 for i in tqdm(range(0, len(indices), processes)):
     jobs=[]
     for j in range(min(processes, len(indices)-i)):
-        # count = 0
-        # for proc in jobs:
-        #     if(proc.is_alive() == True):
-        #         count+=1
-        #     else:
-        #         proc.join()
-        # while (count == processes):
-        #     count = 0
-        #     for proc in jobs:
-        #         if(proc.is_alive() == True):
-        #             count+=1
-        #         else:
-        #             proc.join()
+        
         p = multiprocessing.Process(target=processor, args=(i+j, return_dict))
         jobs.append(p)
         p.start()
@@ -328,25 +330,15 @@ for i in tqdm(range(0, len(indices), processes)):
     for proc in jobs:
         proc.join()
 
+# ======  End of Multi Process handling of the edits in parallel.  =======
+
+
 count = 0
-
-
-# for proc in jobs:
-#     if(proc.is_alive()):
-#         count+=1
-# print(len(jobs), count)
-# for proc in jobs:
-#     if(proc.is_alive()):
-#         print("Exeuting one ")
-#         proc.join()
-
-print("done")
-# atexit.register(cleanup)
 for i in range(len(indices)):
     for j in range(len(return_dict[i])):
         changes.append(return_dict[i][j])
 
-
+# Store the sentences in the following format in the file
 file2 = open(sys.argv[5] ,'w')
 for i in changes:
     file2.write(i[0] + "\n####SCORE###\n"+str(i[1])+"\n####SCORE###\n")

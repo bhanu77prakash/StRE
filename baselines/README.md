@@ -1,6 +1,6 @@
 ## ORES++
 
-### Organization of the folder
+#### Organization of the folder
 ```
 1. data_preprocess.py - Converts the processed data to features and their ground truth labels. 
 2. Classifiers.py - Runs various ML classifiers on the generated features and labels(by default runs only RF classifier, see code to run other classifiers). 

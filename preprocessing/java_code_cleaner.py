@@ -1,15 +1,25 @@
+# ===========================================================================================
+# =           Code to convert xml format of the text tag to the plain text format           =
+# ===========================================================================================
+
+
+
 import re,os
 import sys
 from subprocess import check_output
 import multiprocessing
 
 if(len(sys.argv)!= 3):
-    print("Usage: python3 java_code_cleaner.py text_extracted_file output_file>")
+    print("Usage: python3 java_code_cleaner.py <text_extracted_file> <output_file>")
     exit()
 
 
 file = open(sys.argv[1], "r")
 file2 = open(sys.argv[2], "w")
+
+# ==================================================================
+# =           Read the data from the extracted text data           =
+# ==================================================================
 
 line = file.read()
 lines = line.split("\n*$*$*$delimiter$*$*$*\n")
@@ -17,8 +27,12 @@ lines = line.split("\n*$*$*$delimiter$*$*$*\n")
 processes = 48
 
 
+# ======  End of Read the data from the extracted text data  =======
 
-# line = file.readlines()
+
+# ================================================================================
+# =           Removes the links, additional markup formats in the data           =
+# ================================================================================
 
 def cleaner(i):
 # for i in line:
@@ -66,31 +80,20 @@ def cleaner(i):
     # print("Finished File\n")
     final = re.sub('==See also==.*', '==', final)
     final = re.sub('Links:.*', ' ', final)
-    # Section wise remover.
-    # final = re.sub('==References==.*?==', '==', final)
-    # final = re.sub('==Notes==.*?==', '==', final)
-    # final = re.sub('==External==.*?==', '==', final)
 
     final = re.sub('====.*?====', ' ', final)
     final = re.sub('===.*?===', ' ', final)
     final = re.sub('==.*?==', ' ', final)
     return final
-    # file2.write(re.sub(r'TEMPLATE\[.*?\]', '', i)))
+
+# ======  End of Removes the links, additional markup formats in the data  =======
 
 
-
-# for i in lines:
-#     if(i.strip() !=''):
-#         temp_file = open(sys.argv[2]+".temp_file", "w")
-#         temp_file.write(i)
-#         temp_file.close()
-#         out = check_output(["java", "-cp", "de.tudarmstadt.ukp.wikipedia.jar", "de.tudarmstadt.ukp.wikipedia.tutorial.parser.T1_SimpleParserDemo", sys.argv[2]+".temp_file"])
-#         # print(out.decode('utf-8'))
-#         final = cleaner(out.decode('utf-8'))
-#         file2.write(final+"\n*$*$*$delimiter$*$*$*\n")
-#     else:
-#         file2.write(" \n*$*$*$delimiter$*$*$*\n")
-
+# =========================================================================
+# =           Multi processing code to run the file in parallel           =
+# =========================================================================
+# The java file needs to be called on single edit and hence each edit is passed individually by storing in a plain text file. 
+# The .temp file stores the text of a single edit. This is passed as input to the jar file.
 
 def processor(string, index, return_dict):
     if(string.strip() !=''):
@@ -106,6 +109,12 @@ def processor(string, index, return_dict):
 
     os.system("rm "+sys.argv[2]+"."+str(index)+"."+".temp_file")
 
+# ======  End of Multi processing code to run the file in parallel  =======
+
+
+# ===================================================================================================================
+# =           Multi Processing code to process the edits in parallel. Each edit is processed individually           =
+# ===================================================================================================================
 
 manager = multiprocessing.Manager()
 return_dict = manager.dict()
@@ -120,6 +129,8 @@ for i in range(0, len(lines), processes):
     for proc in jobs:
         proc.join()
 
-# print(return_dict[0])
+# Stores the processed text in the given file directory.
 for i in range(len(lines)):
     file2.write(return_dict[i])
+
+# ======  End of Multi Processing code to process the edits in parallel. Each edit is processed individually  =======

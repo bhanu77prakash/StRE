@@ -5,6 +5,17 @@ Time per epoch on CPU (Core i7): ~150s.
 
 from __future__ import print_function
 import numpy as np
+np.warnings.filterwarnings('ignore')
+
+import os
+import tensorflow as tf
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+import sys
+stderr = sys.stderr
+sys.stderr = open(os.devnull, 'w')
+
+import keras
+sys.stderr = stderr
 
 from numpy import *
 from keras.preprocessing import sequence
@@ -18,7 +29,7 @@ import random
 from keras.optimizers import SGD, Adam
 from imblearn.over_sampling import SMOTE
 import sklearn_crfsuite
-
+import sklearn
 from sklearn.preprocessing import StandardScaler
 from keras.layers.core import *
 from keras.models import *
@@ -36,7 +47,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--file', type=str, default='',
                        help='file containing input.txt')
-parser.add_argument('--epochs', type=int, default=5,
+parser.add_argument('--epochs', type=int, default=15,
                        help='number of epochs')
 parser.add_argument('--model', type=str, default='',
                        help='trained model')
@@ -110,7 +121,7 @@ batch_size = 50
 word_maxlen = 150
 epochs = args.epochs
 word_embed_dim = 100 
-print('Loading data...')
+# print('Loading data...')
 
 lens = []
 for i in train_data:
@@ -166,10 +177,10 @@ for i in vali_data:
     text+=i
 
 # text = open('magic_cards.txt').read()
-print('corpus length:', len(text))
+# print('corpus length:', len(text))
 
 chars = sorted(list(set(text)))
-print('total chars:', len(chars))
+# print('total chars:', len(chars))
 
 char_indices = np.load(args.folder+'char_indices.npy').item()
 indices_char = np.load(args.folder+'indices_char.npy').item()
@@ -215,7 +226,7 @@ sequences_test = tokenizer.texts_to_sequences(test_data)
 sequences_vali = tokenizer.texts_to_sequences(vali_data)
 
 word_index = tokenizer.word_index
-print('Found %s unique tokens.' % len(word_index))
+# print('Found %s unique tokens.' % len(word_index))
 vocab_size = len(tokenizer.word_index) + 1
 
 word_train = sequence.pad_sequences(sequences_train, maxlen=word_maxlen)
@@ -282,13 +293,13 @@ e_word = Embedding(vocab_size, word_embed_dim, weights=[word_embed_matrix], inpu
 sentence_input = Input(shape=(maxlen, ), dtype='int32')
 embedded_sequences = e(sentence_input)
 
-char_lstm = Bidirectional(LSTM(64, return_sequences=True, trainable=False))(embedded_sequences)
+char_lstm = Bidirectional(LSTM(64, return_sequences=True, trainable=True))(embedded_sequences)
 char_att = AttLayer(embeddings_dim)(char_lstm)
 
 word_input = Input(shape=(word_maxlen, ), dtype='int32')
 word_embed_sequences = e_word(word_input)
 
-word_lstm = Bidirectional(LSTM(64, return_sequences=True, trainable=False))(word_embed_sequences)
+word_lstm = Bidirectional(LSTM(64, return_sequences=True, trainable=True))(word_embed_sequences)
 word_att = AttLayer(embeddings_dim)(word_lstm)
 merge_one = concatenate([char_att, word_att])
 
@@ -304,8 +315,8 @@ out7 = Dense(1, activation='sigmoid')(out6)
 
 model = Model(inputs = [sentence_input, word_input], outputs = out7)
 
-for l in range(len(model.layers)-8): 
-    model.layers[l].trainable=False
+# for l in range(len(model.layers)-8): 
+#     model.layers[l].trainable=False
 sgd = Adam(lr=0.001, decay=1e-4)
 model.compile(optimizer=sgd, loss = 'binary_crossentropy', metrics=['accuracy'])
 model1 = load_model(args.model, custom_objects= {'AttLayer': AttLayer})
@@ -314,16 +325,18 @@ temp_weights = [layer.get_weights() for layer in model1.layers]
 for i in range(len(temp_weights)):
     model.layers[i].set_weights(temp_weights[i])
 
-for l in range(len(model.layers)-8): 
-    model.layers[l].trainable=False
+# for l in range(len(model.layers)-8): 
+#     model.layers[l].trainable=False
 
-model.summary()
+# model.summary()
 # ======  End of Without Attention  =======
 
 # try using different optimizers and different optimizer configs
-print('Train...')
+# print('Train...')
 	
-model.fit([X_train, word_train], Y_train, batch_size=batch_size, epochs=epochs,  validation_data=[[X_vali, word_vali], V_test])
+model.fit([X_train, word_train], Y_train, batch_size=batch_size, epochs=epochs,  validation_data=[[X_vali, word_vali], V_test], verbose =1)
+model.save('ret_model_'+filename.strip().split("/")[-1].split(".")[0]+'_epochs_'+str(epochs)+'.h5')
+
 out = model.predict([X_test, word_test])
 
 count_1 = 0
@@ -354,23 +367,19 @@ for i in range(len(Y_test)):
 	elif(Y_test[i] == 0 and out[i][0] >= 0.50):
 		false_0 += 1
 	
-
-print("Class 1: True - "+str(true_1)+" False - "+str(false_1))
-print("Class 0: True - "+str(true_0)+" False - "+str(false_0))
 # 
 # print(count_0, count_1)
-print(out)
 
 sorted_labels = [0, 1]
-print(metrics.flat_classification_report(
-	    y_test_1, pred_1, labels=sorted_labels, digits=3
-	))
-
+# print(metrics.flat_classification_report(y_test_1, pred_1, labels=sorted_labels, digits=3))
+wt_f1 = sklearn.metrics.f1_score(y_test_1, pred_1, labels=sorted_labels, pos_label=1, average='weighted')
 # print(count_false, count_true)
 
 predicts = []
 for i in out:
     predicts.append(i[0])
-print("AUCROC: ", roc_auc_score(Y_test, predicts))
+# print("AUCROC: ", roc_auc_score(Y_test, predicts))
 # print(count_false, count_true)
-print("AUPRC: "+str(average_precision_score(Y_test, predicts, pos_label=1)))
+# print("AUPRC: "+str(average_precision_score(Y_test, predicts, pos_label=1)))
+
+print(args.file.split("/")[-1], len(final), wt_f1, roc_auc_score(Y_test, predicts), average_precision_score(Y_test, predicts, pos_label=1))

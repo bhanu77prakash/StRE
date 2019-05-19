@@ -1,7 +1,7 @@
-'''Trains a Bidirectional LSTM on the IMDB sentiment classification task.
-Output after 4 epochs on CPU: ~0.8146
-Time per epoch on CPU (Core i7): ~150s.
-'''
+# ======================================================================
+# =           Code to run the word+character+attention model           =
+# ======================================================================
+
 
 from __future__ import print_function
 import numpy as np
@@ -57,6 +57,10 @@ parser.add_argument('--model', type=str, default='',
 parser.add_argument('--save_folder', type=str, default='./',
                        help='directory to save model and test values')
 args = parser.parse_args()
+
+# ======================================================
+# =           Reading the data from the file           =
+# ======================================================
 
 filename = args.file
 file = open(filename, "r")
@@ -116,6 +120,9 @@ for i in range(len(vali_test)):
         vali_test[i] = 1
 
 
+# ========================================
+# =           Hyper Parameters           =
+# ========================================
 
 max_features = 20000
 # cut texts after this number of words
@@ -126,6 +133,10 @@ word_maxlen = 150
 epochs = args.epochs
 word_embed_dim = 100 
 # print('Loading data...')
+
+# =============================================================================================================================
+# =           Defining the max length of the character and word sequence in LSTM using cummulative frequency method           =
+# =============================================================================================================================
 
 lens = []
 for i in train_data:
@@ -195,6 +206,10 @@ Y_train = np.zeros(len(train_data), dtype=int)
 X_test = np.zeros((len(test_data), maxlen), dtype=np.int)
 Y_test = np.zeros(len(test_data), dtype=int)
 V_test = np.zeros(len(vali_data), dtype=int)
+
+# ===========================================
+# =           Character embedding           =
+# ===========================================
 
 for i, sentence in enumerate(train_data):
     for t, char in enumerate(sentence):
@@ -289,7 +304,7 @@ class AttLayer(Layer):
 
 
 # =========================================
-# =           Without Attention           =
+# =           With Attention           =
 # =========================================
 
 e = Embedding(len(char_indices.keys()), embeddings_dim, weights=[embedding_matrix], input_length=maxlen, trainable=False)
@@ -297,6 +312,10 @@ e_word = Embedding(vocab_size, word_embed_dim, weights=[word_embed_matrix], inpu
 
 sentence_input = Input(shape=(maxlen, ), dtype='int32')
 embedded_sequences = e(sentence_input)
+
+# =======================================================================================
+# =           Character LSTM , Word LSTM, attention for both and dense layers           =
+# =======================================================================================
 
 char_lstm = Bidirectional(LSTM(20, return_sequences=True))(embedded_sequences)
 char_att = AttLayer(embeddings_dim)(char_lstm)
@@ -319,7 +338,7 @@ out4 = Dense(4, activation='relu')(out3)
 out5 = Dense(1, activation='sigmoid')(out4)
 
 model = Model(inputs = [sentence_input, word_input], outputs = out5)
-# ======  End of Without Attention  =======
+# ======  End of With Attention  =======
 
 # try using different optimizers and different optimizer configs
 sgd = Adam(lr=0.001, decay=1e-4)
@@ -362,26 +381,16 @@ for i in range(len(Y_test)):
 		false_0 += 1
 	
 
-# print("Class 1: True - "+str(true_1)+" False - "+str(false_1))
-# print("Class 0: True - "+str(true_0)+" False - "+str(false_0))
-# 
-# print(count_0, count_1)
-# print(out)
-
 sorted_labels = [0, 1]
-# print(metrics.flat_classification_report(
-	    # y_test_1, pred_1, labels=sorted_labels, digits=3
-	# ))
 
 predicts = []
 for i in out:
     predicts.append(i[0])
-# print("AUCROC: ", roc_auc_score(Y_test, predicts))
-# print(count_false, count_true)
-# print("AUPRC: "+str(average_precision_score(Y_test, predicts, pos_label=1)))
 wt_f1 = f1_score(y_test_1, pred_1, labels=sorted_labels, pos_label=1, average='weighted')
+# Print weighted F1, AUCROC, AUPRC values
 print(args.file.split("/")[-1], len(final), wt_f1, roc_auc_score(Y_test, predicts), average_precision_score(Y_test, predicts, pos_label=1))
 
+# test_dict['char'] = X_test
 test_dict = {}
 test_dict['char'] = X_test
 test_dict['word'] = word_test

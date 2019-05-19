@@ -1,7 +1,6 @@
-'''Trains a Bidirectional LSTM on the IMDB sentiment classification task.
-Output after 4 epochs on CPU: ~0.8146
-Time per epoch on CPU (Core i7): ~150s.
-'''
+# =======================================================================
+# =           Code to test a model on a page without training           =
+# =======================================================================
 
 
 from __future__ import print_function
@@ -47,6 +46,11 @@ parser.add_argument('--model', type=str, default='',
 parser.add_argument("--folder", type=str, default='./', help="folder containing dictionaries")
 args = parser.parse_args()
 
+# ========================================
+# =           Reading the file           =
+# ========================================
+
+
 
 filename = args.file
 file = open(filename, "r")
@@ -56,6 +60,11 @@ train_data = [lines[x] for x in range(len(lines)) if x%2 == 0]
 y_labels = [lines[x] for x in range(len(lines)) if x%2 != 0]
 y_labels = [float(x.strip()) for x in y_labels]
 train_data = train_data[:-1]
+
+
+# =======================================
+# =           Attention layer           =
+# =======================================
 
 
 
@@ -98,13 +107,19 @@ class AttLayer(Layer):
         return (input_shape[0], input_shape[-1])
 
 
-
+# =========================================
+# =           Loading the model           =
+# =========================================
 
 model = load_model(args.model, custom_objects= {'AttLayer': AttLayer})
 
 dimensions = []
 for layer in model.layers:
 	dimensions+=layer.get_output_at(0).get_shape().as_list()
+
+# ====================================
+# =           Reading data           =
+# ====================================
 
 final = []
 for i in range(len(y_labels)):
@@ -127,6 +142,12 @@ for i in range(len(y_labels)):
     else:
         y_labels[i] = 1
 
+# ========================================
+# =           Hyper Parameters           =
+# ========================================
+
+
+
 max_features = 20000
 # cut texts after this number of words
 # (among top max_features most common words)
@@ -145,6 +166,10 @@ indices_char = np.load(args.folder+'indices_char.npy').item()
 
 X_train = np.zeros((len(train_data), maxlen), dtype=np.int)
 Y_train = np.zeros(len(train_data), dtype=int)
+
+# ============================================
+# =           Character Embeddings           =
+# ============================================
 
 for i, sentence in enumerate(train_data):
     for t, char in enumerate(sentence):
@@ -169,6 +194,10 @@ vocab_size = len(tokenizer.word_index) + 1
 word_train = sequence.pad_sequences(sequences_train, maxlen=word_maxlen)
 
 # ======  End of Loading word embeddings  =======
+
+# ===============================================
+# =           Predicting on the model           =
+# ===============================================
 
 out = model.predict([X_train, word_train])
 
@@ -201,12 +230,8 @@ for i in range(len(Y_train)):
 		false_0 += 1
 	
 
-# print("Class 1: True - "+str(true_1)+" False - "+str(false_1))
-# print("Class 0: True - "+str(true_0)+" False - "+str(false_0))
-
 sorted_labels = [0, 1]
 
-# print("Model tested on "+str(filename.split('/')[-1].split('.')[0])+"\n")
 print(metrics.flat_classification_report(
 	    y_test_1, pred_1, labels=sorted_labels, digits=3
 	))
@@ -216,8 +241,4 @@ predicts = []
 for i in out:
     predicts.append(i[0])
 print("AUCROC: ", roc_auc_score(Y_train, predicts))
-
-# fpr, tpr, thresholds = metrics.roc_curve(Y_train, predicts, pos_label=1)
-# print(metrics.auc(fpr, tpr))
-
 print("AUPRC: "+str(average_precision_score(Y_train, predicts, pos_label=1)))

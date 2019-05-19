@@ -85,7 +85,7 @@ All the files needs to have the line in the header file as the first line in the
 
 #### Running the codes
 
-1. Compute the scores using the compute_quality in the scripts folder. (Follow the [interrank][https://github.com/lca4/interank] link to install the necessary libraries and running the scripts)
+1. Compute the scores using the compute_quality in the scripts folder. (Follow the [interrank](https://github.com/lca4/interank) link to install the necessary libraries and running the scripts)
 2. Run the extractor on the file
 3. Run the java_code_cleaner on the generated file
 4. Run the parser on the generated file

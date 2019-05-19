@@ -1,7 +1,9 @@
-'''Trains a Bidirectional LSTM on the IMDB sentiment classification task.
-Output after 4 epochs on CPU: ~0.8146
-Time per epoch on CPU (Core i7): ~150s.
-'''
+# ===========================================================================================================
+# =           Code that pre-processes the data and generated dictionaries that are needed further           =
+# ===========================================================================================================
+
+
+
 
 from __future__ import print_function
 import numpy as np
@@ -32,6 +34,10 @@ from tqdm import tqdm
 import nltk
 import pickle
 
+# ===========================================
+# =           Read the input file           =
+# ===========================================
+
 filename = sys.argv[1]
 file = open(filename, "r")
 lines = file.read()
@@ -40,14 +46,11 @@ train_data = [lines[x] for x in range(len(lines)) if x%2 == 0]
 y_labels = [lines[x] for x in range(len(lines)) if x%2 != 0]
 y_labels = [float(x.strip()) for x in y_labels]
 train_data = train_data[:-1]
-
 final = []
 for i in range(len(y_labels)):
     final.append((train_data[i], y_labels[i]))
 
-
 random.shuffle(final)
-
 train_data = []
 y_labels = []
 
@@ -61,8 +64,10 @@ for i in range(len(y_labels)):
         y_labels[i] = 0
     else:
         y_labels[i] = 1
+# ======  End of Read the input file  =======
 
 
+# Hyperparameters
 
 max_features = 20000
 # cut texts after this number of words
@@ -73,6 +78,10 @@ word_maxlen = 150
 epochs = 5
 
 print('Loading data...')
+
+# ===============================================================================================================
+# =           Defining the max length of the word and character sequences using cummulative frequency           =
+# ===============================================================================================================
 
 lens = []
 for i in train_data:
@@ -102,6 +111,9 @@ for i in range(len(counts)):
         word_maxlen = lens_set[i]
         break
 
+# ======  End of Defining the max length of the word and character sequences using cummulative frequency  =======
+
+
 embeddings_path = "glove.6B.100d-char.txt"
 embeddings_dim = 100
 
@@ -118,11 +130,16 @@ print('total chars:', len(chars))
 char_indices = dict((c, i) for i, c in enumerate(chars))
 indices_char = dict((i, c) for i, c in enumerate(chars))
 
+# Saving character dictionay and inverted character dictionary
 np.save('char_indices.npy', char_indices)
 np.save('indices_char.npy', indices_char)
 
 X_train = np.zeros((len(train_data), maxlen), dtype=np.int)
 Y_train = np.zeros(len(train_data), dtype=int)
+
+# ===========================================
+# =           Character embedding           =
+# ===========================================
 
 for i, sentence in enumerate(train_data):
     for t, char in enumerate(sentence):
@@ -130,6 +147,7 @@ for i, sentence in enumerate(train_data):
             break
         X_train[i, t] = char_indices[char]
     Y_train[i] = y_labels[i]
+
 
 
 embedding_vectors = {}
@@ -148,7 +166,9 @@ for char, i in char_indices.items():
     if embedding_vector is not None:
         embedding_matrix[i] = embedding_vector
 
+# Saving character embedding matrix
 np.save('char_embedding_matrix.npy', embedding_matrix)
+
 # ===============================================
 # =           Loading word embeddings           =
 # ===============================================

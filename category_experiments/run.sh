@@ -1,13 +1,11 @@
-echo "Concept --------------" >> results.txt
-for filename in "data/concept/"*;do
+for filename in "$1/"*;do
 echo "Processing file $filename"
 python dict_tokenizer.py "$filename"
-python word_char_attention.py --file "$filename" --epochs 15 >> results.txt
+python word_char_attention.py --file "$filename" --epochs 15 
 done
 
-echo "\n\nTechnology --------------" >> results.txt
-for filename in "data/technology/"*;do
+for filename in "$1/"*;do
 echo "Processing file $filename"
 python dict_tokenizer.py "$filename"
-python word_char_attention.py --file "$filename" --epochs 15 >> results.txt
+python word_char_attention.py --file "$filename" --epochs 15 
 done

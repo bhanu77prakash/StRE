@@ -16,6 +16,12 @@ Implementation of the paper StRE: Self Attentive Edit Quality Prediction in Wiki
 
 If you find this code useful in your research then please cite
 
+#### To Run
+
+Please look into the individual folders for running the codes.
+
+If you find this code useful in your research then please cite
+
 ```
 @inproceedings{soumya2019stre,
   title={StRE: Self Attentive Edit Quality Prediction in Wikipedia},
